@@ -1,6 +1,7 @@
 import csv
 import argparse
 import multiprocessing
+from re import search
 
 import musicbrainzngs
 
@@ -11,6 +12,13 @@ PARSER = argparse.ArgumentParser(
 )
 PARSER.add_argument(
     "-i", dest="input_file", type=str, default="albums.csv", help="The input file path"
+)
+PARSER.add_argument(
+    "-m",
+    dest="multiprocessing_enabled",
+    action="store_true",
+    default=False,
+    help="Enable multiprocessing",
 )
 PARSER.add_argument(
     "-o",
@@ -27,7 +35,7 @@ def release_get_year(search_params={}):
     artist = search_params.get("artist", "")
     album = search_params.get("album", "")
     if ARGS.verbose:
-        print("Starting request to musicbrainz")
+        print(f"\nStarting request to musicbrainz")
     release = musicbrainzngs.search_releases(
         artist=artist,
         release=album,
@@ -79,10 +87,13 @@ if __name__ == "__main__":
     if ARGS.verbose:
         print(f"Found {len(album_list)} albums on the input CSV.")
 
-    cpu_count = multiprocessing.cpu_count()
-    with multiprocessing.Pool(cpu_count) as pool:
-        if ARGS.verbose:
-            print(f"Starting process pool with {cpu_count} CPUs")
-        releases_with_years = pool.map(release_get_year, album_list)
+    if ARGS.multiprocessing_enabled:
+        cpu_count = multiprocessing.cpu_count()
+        with multiprocessing.Pool(cpu_count) as pool:
+            if ARGS.verbose:
+                print(f"Starting process pool with {cpu_count} CPUs")
+            releases_with_years = pool.map(release_get_year, album_list)
+    else:
+        releases_with_years = [release_get_year(row) for row in album_list]
 
     generate_output_csv(releases_with_years)
