@@ -1,7 +1,6 @@
 import csv
 import argparse
 import multiprocessing
-from re import search
 
 import musicbrainzngs
 
@@ -31,11 +30,22 @@ PARSER.add_argument("-v", action="store_true", dest="verbose", help="Show verbos
 ARGS = PARSER.parse_args()
 
 
+def get_release_year(release):
+    default_date = "0000-00-00"
+    if ARGS.verbose:
+        print(f"Got date: { release.get('date') }")
+    release_date = release.get("date") or default_date
+    if len(release_date) == 4:
+        release_date = f"{release_date}-00-00"
+
+    return release_date[:4]
+
+
 def release_get_year(search_params={}):
     artist = search_params.get("artist", "")
     album = search_params.get("album", "")
     if ARGS.verbose:
-        print(f"\nStarting request to musicbrainz")
+        print(f"\nalbum_listStarting request to musicbrainz")
     release = musicbrainzngs.search_releases(
         artist=artist,
         release=album,
@@ -46,14 +56,10 @@ def release_get_year(search_params={}):
     if ARGS.verbose:
         print(f"Search for '{artist} - {album}' returned {release_count} results.")
 
-    earliest_release_year = str(
-        min([int(r.get("date", "0000-00-00")[:4]) for r in release_list])
-    )
-
     return {
         "artist": artist,
         "album": album,
-        "earliest_release": earliest_release_year,
+        "earliest_release": min([get_release_year(r) for r in release_list]),
     }
 
 
